@@ -201,61 +201,7 @@ class StockLandedCost(models.Model):
                 print(key, value)
                 landed_cost_line_obj.browse(key).write({"price_unit": value})
 
-        # self.compute_costing_lines()
         return res
-
-    def compute_costing_lines(self):
-        # self.valuation_adjustment_lines.unlink()
-        lines = []
-        for record in self:
-            for line in record.valuation_adjustment_lines:
-                val = {}
-                # val["product_id"] = line.product_id
-                # val["former_cost"] = line.product_id.standard_price
-                landed_cost = (
-                    self.landed_cost_factor
-                    * (self.currency_factor or 1)
-                    * line.product_id.standard_price
-                    if self.landed_cost_factor > 0
-                    else line.product_id.standard_price
-                )
-                val["new_cost"] = landed_cost
-                val["old_price"] = line.product_id.lst_price
-                price = (
-                    self.base_pricing_factor * landed_cost
-                    if self.base_pricing_factor > 0
-                    else line.product_id.lst_price
-                )
-
-                val["computed_price"] = price
-
-                if self.pricing_preference == "high":
-                    val["new_price"] = round(
-                        price
-                        if price > line.product_id.lst_price
-                        else line.product_id.lst_price
-                    )
-                elif self.pricing_preference == "low":
-                    val["new_price"] = round(
-                        price
-                        if price < line.product_id.lst_price
-                        else line.product_id.lst_price
-                    )
-                else:
-                    val["new_price"] = round(price)
-
-                val["new_price"] = (
-                    round(float(val["new_price"]) / 10) * 10
-                )  # round to nearest 10. Make sure price is a float for correct computation
-                # val['old_margin'] = line.product_id.lst_price - line.product_id.standard_price
-                # val['new_margin'] = val['new_price'] - val['new_cost']
-
-                val["cost_difference"] = val["new_cost"] - val["former_cost"]
-                val["price_difference"] = val["new_price"] - val["old_price"]
-
-                lines.append((0, 0, val))
-
-        self.valuation_adjustment_lines = lines
 
     def adjust_costing(self):
         for record in self:
