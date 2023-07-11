@@ -121,6 +121,28 @@ class StockLandedCost(models.Model):
             purchase_order_line_ids = []
             cost_dict = {}
             for line in self.valuation_adjustment_lines:
+                print("\n\n===VAD LINE===")
+                print(line)
+                print(line.former_cost)
+                print(line.new_cost)
+                print(line.cost_difference)
+                print(line.cost_id.cost_lines[0].price_unit)
+                landed_cost = (
+                    self.landed_cost_factor
+                    * (self.currency_factor or 1)
+                    * line.cost_id.cost_lines[0].price_unit
+                    if self.landed_cost_factor > 0
+                    else line.product_id.standard_price
+                )
+                computed_price = (
+                    self.base_pricing_factor * landed_cost
+                    if self.base_pricing_factor > 0
+                    else line.product_id.lst_price
+                )
+                print("===LANDED COST===")
+                print(landed_cost)
+                line.new_cost = landed_cost
+                line.computed_price = computed_price
                 purchase_line_id = self.env["purchase.order.line"].search(
                     [
                         ("product_id", "=", line.product_id.id),
@@ -171,6 +193,7 @@ class StockLandedCost(models.Model):
                     cost_dict[line.cost_line_id.id] = line.additional_landed_cost
                 else:
                     cost_dict[line.cost_line_id.id] += line.additional_landed_cost
+
             landed_cost_line_obj = self.env["stock.landed.cost.lines"]
             print("\n\n===COST DICT===")
             print(cost_dict)
@@ -182,13 +205,13 @@ class StockLandedCost(models.Model):
         return res
 
     def compute_costing_lines(self):
-        self.valuation_adjustment_lines.unlink()
+        # self.valuation_adjustment_lines.unlink()
         lines = []
         for record in self:
             for line in record.valuation_adjustment_lines:
                 val = {}
-                val["product_id"] = line.product_id
-                val["former_cost"] = line.product_id.standard_price
+                # val["product_id"] = line.product_id
+                # val["former_cost"] = line.product_id.standard_price
                 landed_cost = (
                     self.landed_cost_factor
                     * (self.currency_factor or 1)
