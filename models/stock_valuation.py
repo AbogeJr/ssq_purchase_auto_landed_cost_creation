@@ -4,7 +4,9 @@ from odoo import fields, models, api, _
 class InheritStockValuationAjdjustmentLines(models.Model):
     _inherit = "stock.valuation.adjustment.lines"
 
-    cost_difference = fields.Float(string="Cost Difference", readonly=True)
+    cost_difference = fields.Float(
+        string="Cost Difference", compute="_compute_cost_difference", store=True
+    )
     price_difference = fields.Float(
         string="Price Difference", compute="_compute_price_difference", store=True
     )
@@ -12,6 +14,11 @@ class InheritStockValuationAjdjustmentLines(models.Model):
     new_price = fields.Float(string="New Price")
     old_price = fields.Float(string="Old Price")
     new_cost = fields.Float(string="New Cost")
+
+    @api.depends("new_cost", "former_cost")
+    def _compute_cost_difference(self):
+        for record in self:
+            record.cost_difference = record.new_cost - record.former_cost
 
     @api.depends("old_price", "new_price")
     def _compute_price_difference(self):

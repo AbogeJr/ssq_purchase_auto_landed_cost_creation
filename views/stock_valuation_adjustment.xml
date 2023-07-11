@@ -11,19 +11,24 @@
                 <field name="price_difference" />
             </xpath>
 
-            <xpath expr="//field[@name='vendor_bill_id']" position='after'>
+            <xpath expr="//field[@name='vendor_bill_id']" position='replace'>
                 <field name="vendor_bill_ids" widget="many2many_tags" />
             </xpath>
 
             <xpath expr="//field[@name='valuation_adjustment_lines']" position='after'>
                 <group class="oe_subtotal_footer oe_right">
-                    <field name="currency_factor" />
                     <field name="landed_cost_factor" />
                     <field name="base_pricing_factor" />
                     <field name="pricing_preference" />
                     <button colspan="2" name="adjust_costing" string="Adjust Costing" type="object" class="oe_right btn-secondary" />
                     <button colspan="2" name="revert_costing" string="Revert Costing" type="object" class="oe_right btn-secondary" />
+                    <button string="Update Supplier Pricelist" colspan="2" class="oe_right btn-secondary" name="update_supplier_pricelist" type="object" />
                 </group>
+            </xpath>
+
+            <xpath expr="//group[@class='oe_subtotal_footer oe_right']/field[@name='currency_id']" position='after'>
+                <field name="currency_factor" widget="monetary"  />
+                <field name="cost_item_totals" widget="monetary" string="Total on PO" />
             </xpath>
 
 
