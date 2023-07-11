@@ -2,48 +2,6 @@ from odoo import fields, models
 from datetime import datetime
 
 
-# class StockPicking(models.Model):
-#     _inherit = "stock.picking"
-
-#     def button_validate(self):
-#         res = super(StockPicking, self).button_validate()
-#         if res and self.purchase_id.landed_cost_lines:
-#             line_data = []
-#             for line in self.env["purchase.landed.cost.line"].search(
-#                 [
-#                     ("purchase_id", "=", self.purchase_id.id),
-#                     ("is_landed_cost_created", "=", False),
-#                 ]
-#             ):
-#                 line_data.append(
-#                     (
-#                         0,
-#                         0,
-#                         {
-#                             "product_id": line.product_id.id,
-#                             "name": line.name,
-#                             "account_id": line.account_id.id,
-#                             "split_method": line.split_method,
-#                             "price_unit": line.price_unit,
-#                         },
-#                     )
-#                 )
-#                 line.is_landed_cost_created = True
-#             landed_cost = self.env["stock.landed.cost"].create(
-#                 {
-#                     "date": datetime.now().date(),
-#                     "purchase_id": self.purchase_id.id,
-#                     "picking_ids": self.ids,
-#                     "cost_lines": line_data,
-#                 }
-#             )
-#             self.sudo().purchase_id.landed_costs_ids = [(4, landed_cost.id)]
-#             landed_cost.sudo().with_context(
-#                 {"is_purchase_auto_calculation": True}
-#             ).button_validate()
-#         return res
-
-
 class StockLandedCost(models.Model):
     _inherit = "stock.landed.cost"
 

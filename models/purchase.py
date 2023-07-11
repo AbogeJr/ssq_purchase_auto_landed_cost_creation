@@ -13,6 +13,14 @@ class PurchaseOrder(models.Model):
 
     def create_landed_cost(self):
         self.ensure_one()
+        purchase_line_ids = self.env["purchase.order.line"].search(
+            [("order_id", "=", self.id)]
+        )
+        print("\n\n===PURCHASE LINE IDS===")
+        print(purchase_line_ids)
+        print(purchase_line_ids.invoice_lines)
+        print(purchase_line_ids.invoice_lines.move_id)
+
         invoice = False
         draft_landed_costs = self.landed_cost_lines.search(
             [
@@ -29,6 +37,7 @@ class PurchaseOrder(models.Model):
             AccountMove = self.env["account.move"]
             AccountMoveLine = self.env["account.move.line"]
 
+            vb_ids = []
             # for line in draft_landed_costs:
             for vendor_id, landed_costs in landed_costs_per_vendor.items():
                 invoice = AccountMove.create(
@@ -40,9 +49,9 @@ class PurchaseOrder(models.Model):
                     }
                 )
 
-                for item in landed_costs:
-                    line_data = []
+                vb_ids.append(invoice.id)
 
+                for item in landed_costs:
                     line = AccountMoveLine.create(
                         {
                             "name": item.name,
@@ -52,34 +61,9 @@ class PurchaseOrder(models.Model):
                             "is_landed_costs_line": True,
                             "purchase_order_id": self.id,
                             "move_id": invoice.id,
+                            "purchase_line_id": purchase_line_ids.id,
                         }
                     )
-
-                    # print("\n\nline\n\n", line)
-                    line_data.append(
-                        (
-                            0,
-                            0,
-                            {
-                                "product_id": item.product_id.id,
-                                "name": item.name,
-                                "account_id": item.account_id.id,
-                                "split_method": item.split_method,
-                                "price_unit": item.price_unit,
-                            },
-                        )
-                    )
-                    item.is_landed_cost_created = True
-                    landed_cost = self.env["stock.landed.cost"].create(
-                        {
-                            "vendor_bill_id": invoice.id,
-                            "date": datetime.now().date(),
-                            "purchase_id": self.id,
-                            "picking_ids": self.picking_ids,
-                            "cost_lines": line_data,
-                        }
-                    )
-                    self.sudo().landed_costs_ids = [(4, landed_cost.id)]
 
                 invoice.write(
                     {
@@ -88,9 +72,35 @@ class PurchaseOrder(models.Model):
                         ]
                     }
                 )
-            # landed_cost.sudo().with_context(
-            #     {"is_purchase_auto_calculation": True}
-            # ).button_validate()
+
+            line_data = []
+            for item in draft_landed_costs:
+                line_data.append(
+                    (
+                        0,
+                        0,
+                        {
+                            "product_id": item.product_id.id,
+                            "name": item.name,
+                            "account_id": item.account_id.id,
+                            "split_method": item.split_method,
+                            "price_unit": item.price_unit,
+                        },
+                    )
+                )
+                item.is_landed_cost_created = True
+            landed_cost = self.env["stock.landed.cost"].create(
+                {
+                    "vendor_bill_id": invoice.id,
+                    "vendor_bill_ids": vb_ids,
+                    "date": datetime.now().date(),
+                    "purchase_id": self.id,
+                    "picking_ids": self.picking_ids,
+                    "cost_lines": line_data,
+                }
+            )
+            self.sudo().landed_costs_ids = [(4, landed_cost.id)]
+            self.sudo().invoice_status = "invoiced"
 
     def action_view_landed_costs(self):
         self.ensure_one()
