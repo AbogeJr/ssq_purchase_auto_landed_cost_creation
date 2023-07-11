@@ -47,6 +47,20 @@ class StockLandedCost(models.Model):
 
     def compute_landed_cost(self):
         res = super(StockLandedCost, self).compute_landed_cost()
+        valuation_totals_dict = {
+            "product_id": False,
+            "former_cost": 0,
+            "new_cost": 0,
+            "cost_difference": 0,
+            "computed_price": 0,
+            "new_price": 0,
+            "old_price": 0,
+            "quantity": 1,
+            "additional_landed_cost": 0,
+            "cost_id": self.id,
+        }
+        # return res
+
         if self.purchase_id:
             total_purchase_qty = 0
             total_product_weight = 0
@@ -60,17 +74,31 @@ class StockLandedCost(models.Model):
             purchase_order_line_ids = []
             prev_former_cost = 0
             for line in self.env["stock.valuation.adjustment.lines"].search(
-                [("cost_line_id", "=", self.cost_lines[0].id)]
+                [("cost_line_id", "in", self.cost_lines.ids)]
             ):
+                print("\n\n===VALUATION LINE===")
+                print(line)
+                print(line.former_cost)
+                print(line.new_cost)
+                print(line.cost_difference)
+                print(line.computed_price)
+                print(line.cost_line_id.product_id.name)
+                print(line.product_id.name)
+                print(line.cost_id.name)
+                print(self.name)
                 purchase_line_id = self.env["purchase.order.line"].search(
                     [
                         ("product_id", "=", line.product_id.id),
                         ("order_id", "=", self.purchase_id.id),
                         ("id", "not in", purchase_order_line_ids),
                     ],
-                    limit=1,
+                    # limit=1,
                     order="id asc",
                 )
+                print("\n\n===PURCHASE LINE===")
+                print(purchase_line_id)
+                print(purchase_line_id.name)
+                valuation_totals_dict["product_id"] = line.product_id.id
                 purchase_order_line_ids.append(purchase_line_id.id)
                 prev_former_cost += (
                     line.former_cost / line.quantity * purchase_line_id.product_qty
@@ -79,16 +107,16 @@ class StockLandedCost(models.Model):
             purchase_order_line_ids = []
             cost_dict = {}
             for line in self.valuation_adjustment_lines:
-                print("\n\n===VAD LINE===")
+                print("\n\n===VAD LINE STart===")
                 print(line)
                 print(line.former_cost)
                 print(line.new_cost)
                 print(line.cost_difference)
-                print(line.cost_id.cost_lines[0].price_unit)
+                print(line.cost_line_id.price_unit)
                 landed_cost = (
                     self.landed_cost_factor
                     * (self.currency_factor or 1)
-                    * line.cost_id.cost_lines[0].price_unit
+                    * line.cost_line_id.price_unit
                     if self.landed_cost_factor > 0
                     else line.product_id.standard_price
                 )
@@ -97,8 +125,8 @@ class StockLandedCost(models.Model):
                     if self.base_pricing_factor > 0
                     else line.product_id.lst_price
                 )
-                print("===LANDED COST===")
-                print(landed_cost)
+                # print("===LANDED COST===")
+                # print(landed_cost)
                 line.new_cost = landed_cost
                 line.computed_price = computed_price
                 purchase_line_id = self.env["purchase.order.line"].search(
@@ -149,16 +177,41 @@ class StockLandedCost(models.Model):
                     )
                 if line.cost_line_id.id not in cost_dict:
                     cost_dict[line.cost_line_id.id] = line.additional_landed_cost
+                    valuation_totals_dict[
+                        "additional_landed_cost"
+                    ] += line.additional_landed_cost
                 else:
                     cost_dict[line.cost_line_id.id] += line.additional_landed_cost
+                    valuation_totals_dict[
+                        "additional_landed_cost"
+                    ] += line.additional_landed_cost
+                print("\n\n===VAD LINE END===")
+                print(line)
+                print(line.former_cost)
+                print(line.new_cost)
+                print(line.cost_difference)
+                print(line.cost_line_id.price_unit)
+                valuation_totals_dict["former_cost"] += line.former_cost
+                valuation_totals_dict["new_cost"] += line.new_cost
+                valuation_totals_dict["cost_difference"] += line.cost_difference
+                valuation_totals_dict["computed_price"] += line.computed_price
+                valuation_totals_dict["new_price"] += line.new_price
+                valuation_totals_dict["old_price"] += line.old_price
+                valuation_totals_dict["quantity"] = line.quantity
+                valuation_totals_dict["cost_id"] = self.id
+                valuation_totals_dict["product_id"] = line.product_id.id
 
             landed_cost_line_obj = self.env["stock.landed.cost.lines"]
-            print("\n\n===COST DICT===")
-            print(cost_dict)
+            # print("\n\n===COST DICT===")
+            # print(cost_dict)
             for key, value in cost_dict.items():
                 print(key, value)
                 landed_cost_line_obj.browse(key).write({"price_unit": value})
 
+        self.valuation_adjustment_lines.unlink()
+        print("\n\nValuation lines deleted")
+        self.env["stock.valuation.adjustment.lines"].create(valuation_totals_dict)
+        print("\n\nValuation lines deleted")
         return res
 
     def adjust_costing(self):
