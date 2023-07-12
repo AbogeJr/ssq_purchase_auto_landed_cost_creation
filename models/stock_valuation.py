@@ -18,12 +18,12 @@ class InheritStockValuationAjdjustmentLines(models.Model):
     @api.depends("new_cost", "former_cost")
     def _compute_cost_difference(self):
         for record in self:
-            record.cost_difference = record.new_cost - record.former_cost
+            record.cost_difference = record.final_cost - record.former_cost
 
-    @api.depends("old_price", "new_price")
+    @api.depends("computed_price", "new_price")
     def _compute_price_difference(self):
         for record in self:
-            record.price_difference = record.final_cost - record.former_cost
+            record.price_difference = record.new_price - record.computed_price
 
     @api.onchange("new_price")
     def onchange_new_price(self):
