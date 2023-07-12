@@ -48,13 +48,13 @@ class StockLandedCost(models.Model):
 
     def compute_valuation_totals(self):
         valuation_totals_dict = {
-            # "product_id": False,
+            "cost_line_id": False,
             "former_cost": 0,
             "final_cost": 0,
             "cost_difference": 0,
             "computed_price": 0,
             "new_price": 0,
-            # "old_price": 0,
+            "move_id": False,
             "quantity": 1,
             "additional_landed_cost": 0,
             "cost_id": self.id,
@@ -67,14 +67,15 @@ class StockLandedCost(models.Model):
             print(line.cost_difference)
             print(line.computed_price)
             print(line.cost_line_id.product_id.name)
+            print(line.cost_line_id.id)
             print(line.product_id.name)
             print(line.cost_id.name)
             valuation_totals_dict["former_cost"] = line.former_cost
             valuation_totals_dict["final_cost"] += line.final_cost
-            # valuation_totals_dict["cost_difference"] += line.cost_difference
+            valuation_totals_dict["cost_line_id"] = line.cost_line_id.id
             valuation_totals_dict["computed_price"] += line.computed_price
             valuation_totals_dict["new_price"] += line.new_price
-            # valuation_totals_dict["old_price"] += line.old_price
+            valuation_totals_dict["move_id"] = line.move_id.id
             valuation_totals_dict["quantity"] = line.quantity
             # valuation_totals_dict["cost_id"] = self.id
             valuation_totals_dict["product_id"] = line.product_id.id
@@ -82,6 +83,7 @@ class StockLandedCost(models.Model):
                 "additional_landed_cost"
             ] += line.additional_landed_cost
 
+        print("\n\n===Deleting Vluation Lines===")
         self.valuation_adjustment_lines.unlink()
         print("\n\nValuation lines deleted")
         self.env["stock.valuation.adjustment.lines"].create(valuation_totals_dict)
