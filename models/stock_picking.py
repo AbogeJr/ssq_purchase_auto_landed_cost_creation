@@ -216,7 +216,7 @@ class StockLandedCost(models.Model):
                 line.old_price = line.product_id.lst_price
                 line.former_cost = line.product_id.standard_price
                 line.product_id.lst_price = line.new_price
-                line.product_id.standard_price = line.new_cost
+                line.product_id.standard_price = line.final_cost
 
     def revert_costing(self):
         for record in self:

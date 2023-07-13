@@ -9,7 +9,7 @@ class PurchaseOrder(models.Model):
     landed_cost_lines = fields.One2many(
         "purchase.landed.cost.line", "purchase_id", "Landed Costs"
     )
-    landed_costs_ids = fields.Many2many("stock.landed.cost")
+    landed_costs_ids = fields.One2many('stock.landed.cost', 'purchase_id', string='Landed Costs')
 
     def create_landed_cost(self):
         self.ensure_one()
@@ -57,7 +57,8 @@ class PurchaseOrder(models.Model):
                             "name": item.name,
                             "product_id": item.product_id.id,
                             "tax_ids": [(6, 0, item.product_id.taxes_id.ids)],
-                            "price_unit": item.product_id.list_price,
+                            'account_id': item.account_id.id,
+                            "price_unit": item.price_unit,
                             "is_landed_costs_line": True,
                             "purchase_order_id": self.id,
                             "move_id": invoice.id,
@@ -96,7 +97,7 @@ class PurchaseOrder(models.Model):
                     "date": datetime.now().date(),
                     "purchase_id": self.id,
                     "picking_ids": self.picking_ids,
-                    "cost_lines": line_data,
+                    "cost_lines": line_data
                 }
             )
             self.sudo().landed_costs_ids = [(4, landed_cost.id)]
@@ -104,21 +105,10 @@ class PurchaseOrder(models.Model):
 
     def action_view_landed_costs(self):
         self.ensure_one()
-        action = self.env["ir.actions.actions"]._for_xml_id(
-            "stock_landed_costs.action_stock_landed_cost"
-        )
-        domain = [("id", "in", self.landed_costs_ids.ids)]
+        action = self.env["ir.actions.actions"]._for_xml_id("stock_landed_costs.action_stock_landed_cost")
+        domain = [('id', 'in', self.landed_costs_ids.ids)]
         context = dict(self.env.context, default_purchase_id=self.id)
-        views = [
-            (
-                self.env.ref(
-                    "ssq_purchase_auto_landed_cost_creation.view_stock_landed_cost_tree"
-                ).id,
-                "tree",
-            ),
-            (False, "form"),
-            (False, "kanban"),
-        ]
+        views = [(self.env.ref('ssq_purchase_auto_landed_cost_creation.view_stock_landed_cost_tree').id, 'tree'), (False, 'form'), (False, 'kanban')]
         return dict(action, domain=domain, context=context, views=views)
 
 
