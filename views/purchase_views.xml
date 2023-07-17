@@ -6,6 +6,7 @@
             <field name="inherit_id" ref="purchase.purchase_order_form"/>
             <field name="arch" type="xml">
                 <xpath expr="//header/button[last()]" position='after'>
+                    <button name="print_xlsx_report" class="oe_highlight" string="Print to Excel" type="object"/>
                     <button name="create_landed_cost" class="oe_highlight" string="Create Landed Costs" type="object" attrs="{'invisible': [('state', 'not in', ('purchase', 'done'))]}" />
                 </xpath>
 

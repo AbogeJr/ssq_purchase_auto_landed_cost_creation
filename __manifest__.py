@@ -20,4 +20,9 @@
         "views/stock_landed_cost_views.xml",
         "security/ir.model.access.csv",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "ssq_purchase_auto_landed_cost_creation/static/src/js/action_manager.js",
+        ]
+    },
 }
