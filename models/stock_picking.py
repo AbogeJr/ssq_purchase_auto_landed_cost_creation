@@ -20,6 +20,7 @@ class StockLandedCost(models.Model):
     cost_item_totals = fields.Float(
         string="Cost Item Totals", compute="_compute_cost_item_totals"
     )
+    valuation_totals_ids = fields.One2many("valuation.adjustment.totals", "cost_id")
 
     def _compute_cost_item_totals(self):
         for record in self:
@@ -48,46 +49,53 @@ class StockLandedCost(models.Model):
 
     def compute_valuation_totals(self):
         valuation_totals_dict = {
-            "cost_line_id": False,
-            "former_cost": 0,
-            "final_cost": 0,
-            "cost_difference": 0,
-            "computed_price": 0,
-            "new_price": 0,
-            "move_id": False,
-            "quantity": 1,
-            "additional_landed_cost": 0,
+            "old_cost": 0,
+            "new_cost": 0,
+            "old_price": 0,
             "cost_id": self.id,
         }
         for line in self.valuation_adjustment_lines:
-            print("\n\n===VALUATION LINE===")
-            print(line)
-            print(line.former_cost)
-            print(line.new_cost)
-            print(line.cost_difference)
-            print(line.computed_price)
-            print(line.cost_line_id.product_id.name)
-            print(line.cost_line_id.id)
-            print(line.product_id.name)
-            print(line.cost_id.name)
-            valuation_totals_dict["former_cost"] = line.former_cost
-            valuation_totals_dict["final_cost"] += line.final_cost
-            valuation_totals_dict["cost_line_id"] = line.cost_line_id.id
-            valuation_totals_dict["computed_price"] += line.computed_price
-            valuation_totals_dict["new_price"] += line.new_price
-            valuation_totals_dict["move_id"] = line.move_id.id
-            valuation_totals_dict["quantity"] = line.quantity
-            # valuation_totals_dict["cost_id"] = self.id
-            valuation_totals_dict["product_id"] = line.product_id.id
-            valuation_totals_dict[
-                "additional_landed_cost"
-            ] += line.additional_landed_cost
+            landed_cost = (
+                self.landed_cost_factor
+                * (self.currency_factor or 1)
+                * line.additional_landed_cost
+                if self.landed_cost_factor > 0
+                else line.product_id.standard_price
+            )
+            valuation_totals_dict["new_cost"] += landed_cost
+            valuation_totals_dict["old_price"] = line.product_id.lst_price
+            price = (
+                self.base_pricing_factor * landed_cost
+                if self.base_pricing_factor > 0
+                else line.product_id.lst_price
+            )
+            valuation_totals_dict["computed_price"] = price
+            if self.pricing_preference == "high":
+                valuation_totals_dict["computed_price"] = round(
+                    price
+                    if price > line.product_id.lst_price
+                    else line.product_id.lst_price
+                )
+            elif self.pricing_preference == "low":
+                valuation_totals_dict["computed_price"] = round(
+                    price
+                    if price < line.product_id.lst_price
+                    else line.product_id.lst_price
+                )
+            else:
+                valuation_totals_dict["computed_price"] = round(price)
 
-        print("\n\n===Deleting Vluation Lines===")
-        self.valuation_adjustment_lines.unlink()
-        print("\n\nValuation lines deleted")
-        self.env["stock.valuation.adjustment.lines"].create(valuation_totals_dict)
-        print("\n\nValuation lines created")
+            valuation_totals_dict["old_cost"] = line.product_id.standard_price
+            # valuation_totals_dict["old_price"] = line.product_id.lst_price
+            valuation_totals_dict["new_price"] += valuation_totals_dict[
+                "computed_price"
+            ]
+            valuation_totals_dict["product_id"] = line.product_id.id
+
+        valuation_totals_dict["new_cost"] += valuation_totals_dict["old_cost"]
+        # Deleting the existing totals
+        self.valuation_totals_ids.unlink()
+        self.env["valuation.adjustment.totals"].create(valuation_totals_dict)
 
     def compute_landed_cost(self):
         res = super(StockLandedCost, self).compute_landed_cost()
@@ -142,9 +150,9 @@ class StockLandedCost(models.Model):
                     else line.product_id.lst_price
                 )
 
-                line.new_cost += landed_cost
-                line.computed_price += computed_price
-                line.new_price += computed_price
+                # line.final_cost += landed_cost
+                # line.computed_price += computed_price
+                # line.new_price += computed_price
                 purchase_line_id = self.env["purchase.order.line"].search(
                     [
                         ("product_id", "=", line.product_id.id),
@@ -205,28 +213,26 @@ class StockLandedCost(models.Model):
             self.compute_valuation_totals()
         return res
 
-    def _check_sum(self):
-        print("\n\n===OVERRIDE CHECK SUM===")
-        res = super(StockLandedCost, self)._check_sum()
-        return True
+    # def _check_sum(self):
+    #     print("\n\n===OVERRIDE CHECK SUM===")
+    #     res = super(StockLandedCost, self)._check_sum()
+    #     return True
 
     def adjust_costing(self):
         for record in self:
-            for line in record.valuation_adjustment_lines:
-                line.old_price = line.product_id.lst_price
-                line.former_cost = line.product_id.standard_price
+            for line in record.valuation_totals_ids:
                 line.product_id.lst_price = line.new_price
-                line.product_id.standard_price = line.final_cost
+                line.product_id.standard_price = line.new_cost
 
     def revert_costing(self):
         for record in self:
-            for line in record.valuation_adjustment_lines:
+            for line in record.valuation_totals_ids:
                 line.product_id.lst_price = line.old_price
-                line.product_id.standard_price = line.former_cost
+                line.product_id.standard_price = line.old_cost
 
     def update_supplier_pricelist(self):
         for record in self:
-            for line in record.valuation_adjustment_lines:
+            for line in record.valuation_totals_ids:
                 supplier_pricelist = line.product_id.seller_ids.filtered(
                     lambda x: x.id == record.purchase_id.partner_id.id
                 )
