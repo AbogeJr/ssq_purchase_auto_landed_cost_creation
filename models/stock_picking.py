@@ -99,7 +99,6 @@ class StockLandedCost(models.Model):
 
     def compute_landed_cost(self):
         res = super(StockLandedCost, self).compute_landed_cost()
-        # return res
 
         if self.purchase_id:
             total_purchase_qty = 0
@@ -122,13 +121,8 @@ class StockLandedCost(models.Model):
                         ("order_id", "=", self.purchase_id.id),
                         ("id", "not in", purchase_order_line_ids),
                     ],
-                    # limit=1,
                     order="id asc",
                 )
-                print("\n\n===PURCHASE LINE===")
-                print(purchase_line_id)
-                print(purchase_line_id.name)
-                # valuation_totals_dict["product_id"] = line.product_id.id
                 purchase_order_line_ids.append(purchase_line_id.id)
                 prev_former_cost += (
                     line.former_cost / line.quantity * purchase_line_id.product_qty
@@ -150,9 +144,6 @@ class StockLandedCost(models.Model):
                     else line.product_id.lst_price
                 )
 
-                # line.final_cost += landed_cost
-                # line.computed_price += computed_price
-                # line.new_price += computed_price
                 purchase_line_id = self.env["purchase.order.line"].search(
                     [
                         ("product_id", "=", line.product_id.id),
@@ -212,11 +203,6 @@ class StockLandedCost(models.Model):
 
             self.compute_valuation_totals()
         return res
-
-    # def _check_sum(self):
-    #     print("\n\n===OVERRIDE CHECK SUM===")
-    #     res = super(StockLandedCost, self)._check_sum()
-    #     return True
 
     def adjust_costing(self):
         for record in self:
