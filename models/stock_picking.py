@@ -87,9 +87,7 @@ class StockLandedCost(models.Model):
 
             valuation_totals_dict["old_cost"] = line.product_id.standard_price
             # valuation_totals_dict["old_price"] = line.product_id.lst_price
-            valuation_totals_dict["new_price"] += valuation_totals_dict[
-                "computed_price"
-            ]
+            valuation_totals_dict["new_price"] = valuation_totals_dict["computed_price"]
             valuation_totals_dict["product_id"] = line.product_id.id
 
         valuation_totals_dict["new_cost"] += valuation_totals_dict["old_cost"]
